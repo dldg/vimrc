@@ -1,64 +1,101 @@
+" dldg/vimrc. Loaded from ~/.vimrc (see install.sh). Linux and macOS.
+
+" --- Basic Setup ---
 set nocompatible
-" Disable swap and backup files.
+let mapleader = ","      " set before any <leader> mapping
+set encoding=utf-8
+filetype plugin indent on
+syntax on
+
+" --- Swap, Backup, Undo ---
 set nobackup
 set nowritebackup
 set noswapfile
-" Enable clipboard under Windows.
-set clipboard=unnamedplus,autoselect
-set mouse=a
-" Disable eye-candy.
-set go=
-" Choose the colorscheme.
-let g:solarized_termtrans=1
-set background=dark
+" Persistent undo across sessions
+if has('persistent_undo')
+    let s:undodir = expand('~/.vim/undo')
+    if !isdirectory(s:undodir)
+        call mkdir(s:undodir, 'p', 0700)
+    endif
+    let &undodir = s:undodir . '//'
+    set undofile
+endif
 
-" Session.vim settings.
-set sessionoptions=globals,buffers,curdir,folds,tabpages
-" Make searches ignore case-sensitive, and incremental.
-set ignorecase
-set smartcase
-set incsearch
-" Enable line numbering.
-set number
-" Enable syntax colouring.
-syn on
-" Disable line wrapping.
-set nowrap
-" Enable auto indenting.
-set autoindent
-set smartindent
-set cindent
-" Set tab width to 4 characters.
+" --- UI & Visuals ---
+set number              " line numbers
+set nowrap              " no soft wrapping
+set laststatus=2        " always show the status line
+set ruler
+set showcmd
+set showmatch           " flash matching bracket
+set scrolloff=5         " keep 5 lines visible around the cursor
+set wildmenu            " command-line completion menu
+set wildmode=longest:full,full
+set hidden              " switch buffers without saving
+set mouse=a
+if has('termguicolors') && $COLORTERM =~# 'truecolor\|24bit'
+    set termguicolors
+endif
+set background=dark
+silent! colorscheme elflord
+
+" --- Indentation ---
 set tabstop=4
-set expandtab
 set shiftwidth=4
-" Enable automatic line break at the 76th character.
-set textwidth=76
-" Allow search highlighting
+set softtabstop=4
+set expandtab
+set autoindent
+
+" --- Search ---
+set ignorecase          " ignore case when searching...
+set smartcase           " ...unless the query contains capitals
+set incsearch
 set hlsearch
-" Backspace and cursor keys wrap to previous/next line
-set backspace=indent,eol,start whichwrap+=<,>,[,]
-" Disable F1 for help.
+" Clear search highlight
+nnoremap <silent> <leader><space> :nohlsearch<CR>
+
+" --- Clipboard (needs a +clipboard build: vim-gtk3 on Ubuntu, Homebrew vim on macOS) ---
+if has('clipboard')
+    if has('mac') || has('macunix')
+        set clipboard=unnamed
+    else
+        set clipboard=unnamedplus
+    endif
+endif
+
+" --- Formatting ---
+set backspace=indent,eol,start
+
+" --- Mappings ---
+" Disable F1 help
 map <F1> <nop>
 imap <F1> <nop>
 
-" Make errors search in open tabs, then open a new tab if not found the
-" buffer.
+" Quick directory change
+command! CdHere cd %:p:h
+
+" --- Sessions & Buffers ---
+set sessionoptions=globals,buffers,curdir,folds,tabpages
 set switchbuf=usetab,newtab
 
-" Attempt to remap the leader character to ","
-let mapleader = ","
-" Suggested by NERD Commenter.
-filetype plugin on
-" Map a command to cd to current folder.
-command! CdHere cd %:p:h
-" Map a command to run a file.
-let RunFile='./build/a.out'
-command -nargs=* R
-\ | exe '!' . RunFile . ' <args>'
-
-set laststatus=2
+" --- Statusline ---
 set statusline=\ %f%m%r%h%w\ %=%({%{&ff}\|%{(&fenc==\"\"?&enc:&fenc).((exists(\"+bomb\")\ &&\ &bomb)?\",B\":\"\")}%k\|%Y}%)\ %([%l,%v][%p%%]\ %)
 
-" Set make-program to scons.
-set makeprg=scons
+" --- Filetype-specific ---
+augroup devenv
+    autocmd!
+    " Hard-wrap prose at 76 columns, not code
+    autocmd FileType text,markdown,gitcommit setlocal textwidth=76
+    autocmd FileType gitcommit setlocal textwidth=72
+    " Build C/C++ with scons; other filetypes keep 'make'
+    autocmd FileType c,cpp setlocal makeprg=scons
+    " Makefiles need real tabs
+    autocmd FileType make setlocal noexpandtab
+    " 2-space indent for markup/config
+    autocmd FileType yaml,json,html,css,javascript,typescript setlocal tabstop=2 shiftwidth=2 softtabstop=2
+augroup END
+
+" --- Run ---
+" :R [args] runs g:RunFile (default ./build/a.out)
+let g:RunFile = get(g:, 'RunFile', './build/a.out')
+command! -nargs=* R execute '!' . g:RunFile . ' <args>'
